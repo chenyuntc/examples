@@ -10,7 +10,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.autograd as autograd
 from torch.autograd import Variable
-import torchvision.transforms as T
 
 
 parser = argparse.ArgumentParser(description='PyTorch actor-critic example')
@@ -69,9 +68,10 @@ def finish_episode():
         R = r + args.gamma * R
         rewards.insert(0, R)
     rewards = torch.Tensor(rewards)
-    rewards = (rewards - rewards.mean()) / rewards.std()
+    rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
     for (action, value), r in zip(saved_actions, rewards):
-        action.reinforce(r - value.data.squeeze())
+        reward = r - value.data[0,0]
+        action.reinforce(reward)
         value_loss += F.smooth_l1_loss(value, Variable(torch.Tensor([r])))
     optimizer.zero_grad()
     final_nodes = [value_loss] + list(map(lambda p: p.action, saved_actions))
